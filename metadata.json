@@ -1,0 +1,8 @@
+{
+  "name": "SGE - AEE Escolar",
+  "description": "Sistema de Gestão Escolar para o Atendimento Educacional Especializado (AEE) com foco em sigilo, acessibilidade e segurança.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
