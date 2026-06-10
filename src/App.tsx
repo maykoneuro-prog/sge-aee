@@ -763,12 +763,15 @@ const Login = ({ onLogin }: any) => {
               >
                 Login Administrativo
               </button>
+
+              <a 
+                href="https://land-psc-aee.vercel.app/"
+                className="w-full flex items-center justify-center gap-3 bg-slate-50 border-2 border-slate-100/80 py-5 rounded-[1.5rem] font-black uppercase tracking-[0.2em] text-[10px] text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all shadow-sm"
+              >
+                <ArrowLeft size={14} /> Voltar para Landing Page
+              </a>
             </form>
           </div>
-
-          <p className="text-center mt-10 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            Novo por aqui? <Link to="/register" className="text-orange-600 hover:underline">Ativar Teste Grátis</Link>
-          </p>
         </div>
       </div>
     </div>
@@ -1557,7 +1560,12 @@ function AppContent() {
     localStorage.setItem("user", JSON.stringify(userData));
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+    } catch (err) {
+      console.warn("Erro ao fazer logout do Firebase:", err);
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     setUser(null);
