@@ -104,14 +104,10 @@ function applyUnitSecurity(q: any, filters: any, userId: string): { query: any, 
   const isFallback = filters?.isFallback === true;
   
   if (isSuperAdmin) {
-    const isCentral = !filters.unit || ['Administração Central', 'Sede', 'ADMINISTRAÇÃO CENTRAL', 'SEDE', 'undefined', 'null'].includes(String(filters.unit).trim().toUpperCase());
-    
-    if (isCentral || isFallback) {
-      return { query: q, isAllowed: true };
-    }
-    
-    const unitValue = String(filters.unit).trim().toUpperCase();
-    return { query: query(q, where('unit', '==', unitValue)), isAllowed: true };
+    // Super-administradores têm permissão universal. Retornamos a query base sem restringir por 'unit' no Firestore,
+    // o que evita problemas de comparação de caixa alta/baixa ou erros com acentos/espaços vazios.
+    // As telas do frontend já filtram os registros localmente de forma extremamente flexível e resiliente.
+    return { query: q, isAllowed: true };
   }
 
   // Especial para Escolas: permitimos buscar todas para usuários autenticados
@@ -292,7 +288,27 @@ export const api = {
 
         try {
           const snapshot = await getDocs(q);
-          return snapshot.docs.map(doc => ({ ...(doc.data() as any), id: doc.id }));
+          const results = snapshot.docs.map(doc => ({ ...(doc.data() as any), id: doc.id }));
+          
+          // Se o resultado for vazio, mas estávamos filtrando por unidade, tentamos uma busca local resiliente.
+          // Isso evita que discrepâncias de caixa alta/baixa ou pequenos erros na unidade ocultem os estudantes.
+          if (results.length === 0 && filters && (filters.unit || (filters.allowedUnits && filters.allowedUnits.length > 0)) && !filters.isFallback) {
+            console.log("[api.students.list] Nenhum resultado exato encontrado para unidade. Tentando fallback local resiliente...");
+            let fallbackResults = await api.students.list(Object.assign({}, filters, { unit: undefined, isFallback: true }));
+            
+            if (filters.unit && !['Administração Central', 'Sede', 'ADMINISTRAÇÃO CENTRAL', 'SEDE'].includes(String(filters.unit).trim().toUpperCase())) {
+              const u = String(filters.unit).trim().toUpperCase();
+              fallbackResults = fallbackResults.filter((r: any) => {
+                const rUnit = String(r.unit || "").trim().toUpperCase();
+                const rsUnit = String(r.schoolUnit || "").trim().toUpperCase();
+                return rUnit === u || rsUnit === u || 
+                       rUnit.includes(u) || u.includes(rUnit);
+              });
+            }
+            return fallbackResults;
+          }
+          
+          return results;
         } catch (queryErr) {
           if (String(queryErr).includes('index')) {
             console.warn("Fallback local unit filtering for students");

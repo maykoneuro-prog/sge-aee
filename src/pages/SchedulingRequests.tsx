@@ -19,7 +19,7 @@ export default function SchedulingRequests({ user }: { user: any }) {
 
   useEffect(() => {
     loadData();
-  }, [activeUnit]);
+  }, [activeUnit, user]);
 
   const loadData = async () => {
     try {

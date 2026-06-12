@@ -40,7 +40,7 @@ export default function Appointments({ user }: any) {
 
   useEffect(() => {
     loadData();
-  }, [activeUnit]);
+  }, [activeUnit, user]);
 
   const loadData = async () => {
     try {

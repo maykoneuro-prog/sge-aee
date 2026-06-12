@@ -32,7 +32,7 @@ const DOCUMENT_TYPES = [
   { id: 'aee_refusal_term', name: 'Termo de Recusa do AEE', icon: <X size={20} /> },
 ];
 
-export default function Documents({ user }: { user: any }) {
+export default function Documents({ user, embedStudentId, hideHeader }: { user: any; embedStudentId?: string; hideHeader?: boolean }) {
   const { activeUnit } = useUnit();
   const getAvailableDocumentTypes = (u: any) => {
     return DOCUMENT_TYPES;
@@ -71,7 +71,7 @@ export default function Documents({ user }: { user: any }) {
 
   useEffect(() => {
     loadData();
-  }, [activeUnit]);
+  }, [activeUnit, embedStudentId, user]);
 
   const loadData = async () => {
     try {
@@ -86,6 +86,10 @@ export default function Documents({ user }: { user: any }) {
       if (!isSuperAdmin) {
         filters.professionalId = user.id || user.uid;
         filters.allowedUnits = user?.units || [];
+      }
+
+      if (embedStudentId) {
+        filters.studentId = embedStudentId;
       }
 
       const [docs, studs, lheads, layouts, schools] = await Promise.all([
@@ -104,15 +108,45 @@ export default function Documents({ user }: { user: any }) {
       ]);
       let fetchedDocs = docs || [];
       setDocuments(fetchedDocs);
-      setStudents(studs || []);
+      
+      const studentsData = studs || [];
+      setStudents(studentsData);
       setLetterheads(lheads || []);
       setDocumentLayouts(layouts || []);
       setSchoolsList(schools || []);
+
+      // If embedded, lock the preselected student
+      if (embedStudentId) {
+        const studentMatch = studentsData.find((s: any) => s.id === embedStudentId);
+        if (studentMatch) {
+          setSelectedStudentForDoc(studentMatch);
+          setFormData((prev: any) => ({ ...prev, studentId: embedStudentId }));
+        }
+      }
     } catch (err) {
       console.error(err);
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenNewDoc = () => {
+    setDocBeingEdited(null);
+    setSelectedType(null);
+    if (embedStudentId && students.length > 0) {
+      const student = students.find((s: any) => s.id === embedStudentId);
+      if (student) {
+        setSelectedStudentForDoc(student);
+        setFormData({ studentId: embedStudentId });
+      } else {
+        setSelectedStudentForDoc(null);
+        setFormData({});
+      }
+    } else {
+      setSelectedStudentForDoc(null);
+      setFormData({});
+    }
+    setShowModal(true);
   };
 
   const handleOpenLayoutModal = (docType: string) => {
@@ -500,23 +534,44 @@ export default function Documents({ user }: { user: any }) {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
-        <div className="flex items-center gap-5">
-           <div className="bg-gradient-to-br from-pedagogic-blue to-orange-700 text-white p-4 rounded-[1.5rem] shadow-xl shadow-orange-100">
-             <FileText size={32} />
-           </div>
-           <div>
-             <h2 className="text-3xl font-black text-slate-800 tracking-tight">Atendimentos</h2>
-             <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Registros de Evolução e Documentação</p>
-           </div>
+      {!hideHeader ? (
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+          <div className="flex items-center gap-5">
+             <div className="bg-gradient-to-br from-pedagogic-blue to-orange-700 text-white p-4 rounded-[1.5rem] shadow-xl shadow-orange-100">
+               <FileText size={32} />
+             </div>
+             <div>
+               <h2 className="text-3xl font-black text-slate-800 tracking-tight">Atendimentos</h2>
+               <p className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em] mt-1">Registros de Evolução e Documentação</p>
+             </div>
+          </div>
+          <button 
+            onClick={handleOpenNewDoc}
+            className="bg-pedagogic-blue text-white px-8 py-4 rounded-2xl flex items-center gap-3 font-black uppercase tracking-widest text-xs hover:bg-orange-700 hover:shadow-2xl hover:-translate-y-0.5 transition-all active:scale-95 shadow-xl shadow-orange-100"
+          >
+            <Plus size={18} /> Novo Registro
+          </button>
         </div>
-        <button 
-          onClick={() => { setDocBeingEdited(null); setSelectedType(null); setFormData({}); setSelectedStudentForDoc(null); setShowModal(true); }}
-          className="bg-pedagogic-blue text-white px-8 py-4 rounded-2xl flex items-center gap-3 font-black uppercase tracking-widest text-xs hover:bg-orange-700 hover:shadow-2xl hover:-translate-y-0.5 transition-all active:scale-95 shadow-xl shadow-orange-100"
-        >
-          <Plus size={18} /> Novo Registro
-        </button>
-      </div>
+      ) : (
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center bg-orange-50/40 p-6 rounded-[2rem] border border-orange-100 gap-4 mb-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-sesi-blue text-white rounded-2xl shadow-lg shadow-orange-100">
+              <FileText size={22} />
+            </div>
+            <div>
+              <h4 className="text-base font-black text-sesi-blue uppercase tracking-wider">Dossiê de Atendimentos & Prontuário</h4>
+              <p className="text-[10px] text-gray-550 font-bold uppercase tracking-widest">Acompanhamentos, formulários e evoluções integrados deste estudante</p>
+            </div>
+          </div>
+          <button 
+            type="button"
+            onClick={handleOpenNewDoc}
+            className="bg-sesi-blue text-white px-6 py-3 rounded-xl flex items-center gap-2 font-black uppercase tracking-widest text-xs hover:bg-orange-850 hover:shadow-xl transition-all active:scale-95 shadow-lg shadow-orange-100 w-full md:w-auto justify-center"
+          >
+            <Plus size={16} /> Novo Registro
+          </button>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 flex flex-col md:flex-row gap-6 items-center">
@@ -727,16 +782,31 @@ export default function Documents({ user }: { user: any }) {
                 {!['school_diagnosis', 'group_attendance', 'pedagogical_participation'].includes(selectedType) && (
                   <div className="space-y-2">
                     <label className="block text-sm font-bold text-sesi-blue uppercase tracking-tight">Identificação da Pessoa</label>
-                    <StudentSelector 
-                      students={students}
-                      schools={schoolsList}
-                      selectedStudent={selectedStudentForDoc}
-                      onRefresh={loadData}
-                      onSelect={(s: any) => {
-                        setSelectedStudentForDoc(s);
-                        setFormData({...formData, studentId: s.id});
-                      }}
-                    />
+                    {embedStudentId ? (
+                      <div className="p-4 bg-slate-50 border border-slate-150 rounded-2xl flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-orange-100 text-sesi-blue rounded-full flex items-center justify-center font-black text-sm">
+                            {(selectedStudentForDoc?.name || "A").charAt(0).toUpperCase()}
+                          </div>
+                          <div>
+                            <p className="text-sm font-black text-slate-800 leading-tight">{selectedStudentForDoc?.name}</p>
+                            <p className="text-[10px] text-gray-500 font-bold uppercase tracking-wider mt-0.5">RA: {selectedStudentForDoc?.ra || 'N/A'} | {selectedStudentForDoc?.class || 'N/A'}</p>
+                          </div>
+                        </div>
+                        <span className="text-[9px] font-black uppercase text-sesi-green bg-green-50 px-2.5 py-1 rounded-full tracking-wider">Atrelado ao Prontuário</span>
+                      </div>
+                    ) : (
+                      <StudentSelector 
+                        students={students}
+                        schools={schoolsList}
+                        selectedStudent={selectedStudentForDoc}
+                        onRefresh={loadData}
+                        onSelect={(s: any) => {
+                          setSelectedStudentForDoc(s);
+                          setFormData({...formData, studentId: s.id});
+                        }}
+                      />
+                    )}
                   </div>
                 )}
 

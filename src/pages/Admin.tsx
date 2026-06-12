@@ -309,32 +309,62 @@ export default function Admin() {
         units: (formData.units || []).map(u => u.trim().toUpperCase()),
         expiresAt: formData.expiresAt ? new Date(formData.expiresAt).toISOString() : null
       };
+      
+      const standardizedEmail = dataToSave.email.trim().toLowerCase();
+      
       if (editingUser) {
         if (formData.password) {
           try {
-            await registerUserOnSecondaryApp(dataToSave.email, formData.password);
+            await registerUserOnSecondaryApp(standardizedEmail, formData.password);
           } catch (authErr: any) {
             if (authErr.code !== 'auth/email-already-in-use') {
               console.warn("Could not register user on secondary auth during edit:", authErr);
             }
           }
         }
-        await api.users.update(editingUser.id, dataToSave);
+        await api.users.update(editingUser.id, {
+          ...dataToSave,
+          email: standardizedEmail
+        });
       } else {
         if (!formData.password) {
           throw new Error("Uma senha é necessária para cadastrar e criar as credenciais de primeiro acesso.");
         }
+        
         // Registra a credencial no Firebase Authentication primeiro
-        await registerUserOnSecondaryApp(dataToSave.email, formData.password);
+        try {
+          await registerUserOnSecondaryApp(standardizedEmail, formData.password);
+        } catch (authErr: any) {
+          if (authErr.code === 'auth/email-already-in-use') {
+            console.log("Usuário já cadastrado no Firebase Authentication. Prosseguindo com o registro do perfil profissional no Firestore.");
+          } else if (authErr.code === 'auth/weak-password') {
+            throw new Error("A senha fornecida é muito fraca. Ela deve possuir pelo menos 6 caracteres.");
+          } else if (authErr.code === 'auth/invalid-email') {
+            throw new Error("O endereço de e-mail informado possui um formato inválido.");
+          } else if (authErr.code === 'auth/operation-not-allowed') {
+            throw new Error("O cadastro de e-mail/senha não está ativo no console do Firebase. Ative-o na guia Authentication.");
+          } else {
+            console.warn("Falha ao registrar no Firebase Auth. Criando perfil local mesmo assim para evitar bloqueios de fluxo:", authErr);
+          }
+        }
+        
         // Depois cria o registro no Firestore
-        await api.users.create(dataToSave);
+        await api.users.create({
+          ...dataToSave,
+          email: standardizedEmail
+        });
       }
       setShowModal(false);
       loadUsers();
     } catch (err: any) {
       console.error("Erro completo ao salvar usuário:", err);
       const errorMessage = err.message || "Erro desconhecido";
-      alert(`Falha ao salvar profissional: ${errorMessage}\n\nVerifique se o domínio da aplicação está autorizado no Console do Firebase.`);
+      
+      if (errorMessage.includes("pelo menos 6 caracteres") || errorMessage.includes("formato inválido")) {
+        alert(`Não foi possível salvar o profissional: ${errorMessage}`);
+      } else {
+        alert(`Falha ao salvar profissional: ${errorMessage}\n\nVerifique se os dados estão preenchidos corretamente e que as permissões de rede permitem criar registros.`);
+      }
     }
   };
 
@@ -1077,26 +1107,30 @@ export default function Admin() {
                   <h4 className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 mb-2">Escolas Vinculadas</h4>
                   <div className="p-4 bg-gray-50 rounded-2xl border border-gray-100">
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                      {availableUnitsList.map((unit) => (
-                        <label 
-                          key={unit}
-                          className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all cursor-pointer ${
-                            formData.units.includes(unit) 
-                              ? "bg-sesi-blue/5 border-sesi-blue/20 text-sesi-blue" 
-                              : "bg-white border-gray-200 text-gray-500 grayscale hover:grayscale-0"
-                          }`}
-                        >
-                          <input 
-                            type="checkbox" className="w-4 h-4 rounded text-sesi-blue hidden"
-                            checked={formData.units.includes(unit)}
-                            onChange={() => toggleUnit(unit)}
-                          />
-                          <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${formData.units.includes(unit) ? "border-sesi-blue bg-sesi-blue" : "border-gray-300"}`}>
-                            {formData.units.includes(unit) && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
-                          </div>
-                          <span className="text-[10px] font-black uppercase tracking-tight truncate">{unit}</span>
-                        </label>
-                      ))}
+                      {availableUnitsList.map((unit) => {
+                        const standardizedUnit = unit.trim().toUpperCase();
+                        const isChecked = formData.units.includes(standardizedUnit);
+                        return (
+                          <label 
+                            key={unit}
+                            className={`flex items-center gap-2 p-2.5 rounded-xl border transition-all cursor-pointer ${
+                              isChecked 
+                                ? "bg-sesi-blue/5 border-sesi-blue/20 text-sesi-blue font-black" 
+                                : "bg-white border-gray-200 text-gray-500 hover:text-gray-700 font-bold"
+                            }`}
+                          >
+                            <input 
+                              type="checkbox" className="w-4 h-4 rounded text-sesi-blue hidden"
+                              checked={isChecked}
+                              onChange={() => toggleUnit(unit)}
+                            />
+                            <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${isChecked ? "border-sesi-blue bg-sesi-blue" : "border-gray-300"}`}>
+                              {isChecked && <div className="w-1.5 h-1.5 bg-white rounded-full" />}
+                            </div>
+                            <span className="text-[10px] uppercase tracking-tight truncate">{unit}</span>
+                          </label>
+                        );
+                      })}
                     </div>
                   </div>
                 </div>

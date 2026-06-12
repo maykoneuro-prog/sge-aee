@@ -140,7 +140,7 @@ export default function ImportStudents({ user }: { user: any }) {
 
                   const existingId = existingRAMap.get(ra);
                   if (existingId) {
-                    await api.students.update(existingId, studentData);
+                    // Do not overwrite existing RA student data to preserve records and historical timeline.
                     updatedCount++;
                   } else {
                     await api.students.create(studentData);
@@ -328,7 +328,9 @@ export default function ImportStudents({ user }: { user: any }) {
                   <Zap size={28} />
                 </div>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Atualizados</p>
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    {importType === 'students' ? 'Já Existentes (Preservados)' : 'Atualizados'}
+                  </p>
                   <p className="text-3xl font-black text-slate-800 tracking-tight">{result.updated}</p>
                 </div>
               </div>

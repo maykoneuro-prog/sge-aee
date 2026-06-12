@@ -44,7 +44,7 @@ export default function AtendimentoAee({ user }: { user: any }) {
 
   useEffect(() => {
     loadData();
-  }, [activeUnit]);
+  }, [activeUnit, user]);
 
   const loadData = async () => {
     try {

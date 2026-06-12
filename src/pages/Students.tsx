@@ -5,12 +5,14 @@ import { api } from "../lib/api";
 import { translateFirebaseError } from "../lib/errorTranslations";
 import { openWhatsApp } from "../lib/whatsapp";
 import { useUnit } from "../contexts/UnitContext";
+import Documents from "./Documents";
 
 export default function Students({ user }: { user: any }) {
   const { activeUnit } = useUnit();
   const [selectedStudent, setSelectedStudent] = useState<any>(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [activeTab, setActiveTab] = useState<"ficha" | "prontuario">("ficha");
   const [editFormData, setEditFormData] = useState<any>(null);
   const [students, setStudents] = useState([]);
   const [studentToDelete, setStudentToDelete] = useState<any>(null);
@@ -44,13 +46,14 @@ export default function Students({ user }: { user: any }) {
   });
 
   useEffect(() => {
-    console.log("[Students] Loading data for activeUnit:", activeUnit);
+    console.log("[Students] Loading data for activeUnit:", activeUnit, "user:", user?.email);
     loadData();
-  }, [activeUnit]);
+  }, [activeUnit, user]);
 
   const loadData = async () => {
     try {
-      const isSuperAdmin = user?.role === 'super-admin' || user?.id === 'super_admin' || user?.email === 'maykon.euro@gmail.com' || user?.email === 'administrador@exemplo.com';
+      const adminEmails = ['maykon.euro@gmail.com', 'administrador@exemplo.com', 'administrador@sgepsicologia.com', 'administrador'];
+      const isSuperAdmin = user?.role === 'super-admin' || user?.role === 'admin' || user?.id === 'super_admin' || adminEmails.includes(user?.email?.toLowerCase());
       const cleanUnit = activeUnit?.trim().toUpperCase();
       const isCentral = isSuperAdmin && ['ADMINISTRAÇÃO CENTRAL', 'SEDE'].includes(cleanUnit);
       
@@ -119,7 +122,8 @@ export default function Students({ user }: { user: any }) {
     }
   };
 
-    const isSuperAdmin = user?.role === 'super-admin' || user?.id === 'super_admin' || user?.email === 'maykon.euro@gmail.com' || user?.email === 'administrador@exemplo.com';
+    const adminEmails = ['maykon.euro@gmail.com', 'administrador@exemplo.com', 'administrador@sgepsicologia.com', 'administrador'];
+    const isSuperAdmin = user?.role === 'super-admin' || user?.role === 'admin' || user?.id === 'super_admin' || adminEmails.includes(user?.email?.toLowerCase());
     const isCentral = isSuperAdmin && (['Administração Central', 'Sede', 'ADMINISTRAÇÃO CENTRAL', 'SEDE'].includes(activeUnit.trim().toUpperCase()));
     
     const filteredStudents = students.filter((s: any) => {
@@ -220,6 +224,7 @@ export default function Students({ user }: { user: any }) {
     setSelectedStudent(student);
     setEditFormData(student);
     setIsEditing(false);
+    setActiveTab("ficha");
     setShowDetailsModal(true);
   };
 
@@ -387,7 +392,8 @@ export default function Students({ user }: { user: any }) {
                 <th className="px-6 py-4">RA</th>
                 <th className="px-6 py-4">Turma</th>
                 <th className="px-6 py-4">Escola</th>
-                <th className="px-6 py-4">Período</th>
+                <th className="px-6 py-4">Tipo</th>
+                <th className="px-6 py-4">Ano Letivo</th>
                 <th className="px-6 py-4 text-right">Ações</th>
               </tr>
             </thead>
@@ -709,7 +715,7 @@ export default function Students({ user }: { user: any }) {
       )}
       {showDetailsModal && selectedStudent && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl w-full max-w-3xl p-8 shadow-2xl max-h-[90vh] overflow-y-auto">
+          <div className={`bg-white rounded-[2rem] w-full ${activeTab === 'prontuario' && !isEditing ? 'max-w-5xl' : 'max-w-3xl'} p-8 shadow-[0_25px_60px_-15px_rgba(0,0,0,0.35)] max-h-[92vh] overflow-y-auto transition-all duration-300 border border-slate-100`}>
             <div className="flex justify-between items-start mb-6">
               <div className="flex items-center gap-4">
                 {selectedStudent.photoUrl ? (
@@ -748,6 +754,33 @@ export default function Students({ user }: { user: any }) {
                   </button>
                 </div>
             </div>
+
+            {!isEditing && (
+              <div className="flex border-b border-gray-100 mb-6 gap-6">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("ficha")}
+                  className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 ${
+                    activeTab === "ficha"
+                      ? "border-sesi-blue text-sesi-blue"
+                      : "border-transparent text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  <User size={14} /> Ficha do Aluno
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab("prontuario")}
+                  className={`pb-3 text-xs font-black uppercase tracking-wider border-b-2 transition-all flex items-center gap-2 ${
+                    activeTab === "prontuario"
+                      ? "border-sesi-blue text-sesi-blue"
+                      : "border-transparent text-gray-400 hover:text-gray-600"
+                  }`}
+                >
+                  <FileText size={14} /> Dossiê & Prontuário de Atendimentos
+                </button>
+              </div>
+            )}
 
             {isEditing ? (
               <form onSubmit={handleSaveEdit} className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -918,8 +951,12 @@ export default function Students({ user }: { user: any }) {
                   </button>
                 </div>
               </form>
+            ) : activeTab === "prontuario" ? (
+              <div className="space-y-6">
+                <Documents user={user} embedStudentId={selectedStudent.id} hideHeader={true} />
+              </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in duration-300 font-sans">
                 <div className="space-y-4">
                   <h4 className="font-bold text-sesi-blue border-b pb-2">Informações Acadêmicas</h4>
                   <div className="space-y-2 text-sm">

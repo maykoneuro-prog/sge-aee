@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { api } from "../lib/api";
-import { MessageSquare, ArrowLeft, HeartHandshake, Inbox } from "lucide-react";
+import { MessageSquare, ArrowLeft, HeartHandshake, Inbox, GraduationCap } from "lucide-react";
 
 export default function StudentPortal() {
   const [searchParams] = useSearchParams();
@@ -9,6 +9,7 @@ export default function StudentPortal() {
   const [school, setSchool] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [appSettings, setAppSettings] = useState({ name: "SGE Psicologia", logoUrl: "https://images.weserv.nl/?url=i.imgur.com/NR6kaz6.png" });
+  const [logoError, setLogoError] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -71,13 +72,16 @@ export default function StudentPortal() {
         
         <div className="relative text-center mb-10">
           <div className="inline-flex p-4 rounded-3xl mb-6 bg-gradient-to-br from-white to-gray-50 shadow-md ring-1 ring-gray-100 group">
-             {appSettings.logoUrl && (
+             {appSettings.logoUrl && !logoError ? (
                <img 
                  src={appSettings.logoUrl} 
                  alt="Logo SGE" 
                  className="h-14 w-auto group-hover:scale-110 transition-transform object-contain" 
                  referrerPolicy="no-referrer"
+                 onError={() => setLogoError(true)}
                />
+             ) : (
+               <GraduationCap className="h-14 w-14 text-orange-500 group-hover:scale-110 transition-transform" />
              )}
           </div>
           <h1 className="text-3xl font-extrabold text-slate-800 mb-3 tracking-tight outline-none">Portal do Aluno</h1>

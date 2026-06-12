@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { api } from "../lib/api";
-import { Plus, Trash2, School as SchoolIcon, Search, Edit2, QrCode, Download, X as CloseIcon, Smartphone, ClipboardCheck, ShieldAlert, ArrowRight, MousePointer2, CheckCircle2, Upload, Download as DownloadIcon } from "lucide-react";
+import { Plus, Trash2, School as SchoolIcon, Search, Edit2, QrCode, Download, X as CloseIcon, Smartphone, ClipboardCheck, ShieldAlert, ArrowRight, MousePointer2, CheckCircle2, Upload, Download as DownloadIcon, GraduationCap } from "lucide-react";
 import { QRCodeSVG } from 'qrcode.react';
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "motion/react";
@@ -22,6 +22,7 @@ export default function Schools({ user }: { user: any }) {
   const [selectedSchoolForQR, setSelectedSchoolForQR] = useState<any>(null);
   const [editingSchool, setEditingSchool] = useState<any>(null);
   const [appSettings, setAppSettings] = useState({ name: "SGE Psicologia", logoUrl: "https://images.weserv.nl/?url=i.imgur.com/NR6kaz6.png" });
+  const [logoError, setLogoError] = useState(false);
   const posterRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [selectedSchoolForImport, setSelectedSchoolForImport] = useState<any>(null);
@@ -610,13 +611,18 @@ export default function Schools({ user }: { user: any }) {
                     
                     {/* Header Timbrado */}
                     <div className="flex flex-col items-center mb-12 relative z-10">
-                      <img 
-                        src={appSettings.logoUrl} 
-                        alt="Logo" 
-                        className="h-16 w-auto mb-4 object-contain" 
-                        referrerPolicy="no-referrer" 
-                        crossOrigin="anonymous"
-                      />
+                      {appSettings.logoUrl && !logoError ? (
+                        <img 
+                          src={appSettings.logoUrl} 
+                          alt="Logo" 
+                          className="h-16 w-auto mb-4 object-contain" 
+                          referrerPolicy="no-referrer" 
+                          crossOrigin="anonymous"
+                          onError={() => setLogoError(true)}
+                        />
+                      ) : (
+                        <GraduationCap className="h-16 w-16 text-orange-500 mb-4" />
+                      )}
                       <div className="h-1 w-24 bg-gradient-to-r from-transparent via-pedagogic-blue to-transparent opacity-20 mb-4" />
                       <h4 className="text-2xl font-black text-slate-800 tracking-tight text-center">
                         {selectedSchoolForQR.name}

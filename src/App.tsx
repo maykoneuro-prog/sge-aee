@@ -88,6 +88,7 @@ const Layout = ({ children, user, onLogout }: any) => {
   const [tomorrowAppointmentsCount, setTomorrowAppointmentsCount] = useState(0);
   const [schools, setSchools] = useState<any[]>([]);
   const [appSettings, setAppSettings] = useState({ name: "SGE AEE", logoUrl: "https://images.weserv.nl/?url=i.imgur.com/NR6kaz6.png" });
+  const [logoError, setLogoError] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -288,7 +289,6 @@ const Layout = ({ children, user, onLogout }: any) => {
       roles: ['admin', 'psychologist', 'aee', 'pedagogue'],
       items: [
         { icon: <Calendar size={18} />, label: 'Agenda', path: '/atendimentos', permission: 'appointments' },
-        { icon: <ClipboardCheck size={18} />, label: 'Atendimento AEE', path: '/atendimento-aee', permission: 'documents' },
       ]
     },
     {
@@ -349,7 +349,17 @@ const Layout = ({ children, user, onLogout }: any) => {
       {/* Mobile Header */}
       <header className="md:hidden fixed top-0 left-0 right-0 h-16 bg-white border-b border-slate-100 flex items-center justify-between px-6 z-40 shadow-sm">
         <div className="flex items-center gap-2">
-          {appSettings.logoUrl && <img src={appSettings.logoUrl} alt="Logo" className="h-8" referrerPolicy="no-referrer" />}
+          {appSettings.logoUrl && !logoError ? (
+            <img 
+              src={appSettings.logoUrl} 
+              alt="Logo" 
+              className="h-8 w-auto object-contain" 
+              referrerPolicy="no-referrer"
+              onError={() => setLogoError(true)} 
+            />
+          ) : (
+            <GraduationCap className="h-8 w-8 text-orange-500" />
+          )}
           <span className="font-extrabold text-slate-800 text-sm tracking-tight">{appSettings.name}</span>
         </div>
         <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 text-slate-500 hover:bg-slate-50 rounded-xl transition-all">
@@ -385,13 +395,16 @@ const Layout = ({ children, user, onLogout }: any) => {
         <div className="flex flex-col h-full py-6 px-6">
           <div className="mb-8 flex flex-col items-center gap-2 shrink-0">
             <div className="p-3 bg-slate-50 rounded-[1.5rem] border border-slate-100 shadow-inner group overflow-hidden">
-               {appSettings.logoUrl && (
+               {appSettings.logoUrl && !logoError ? (
                 <img 
                   src={appSettings.logoUrl} 
                   alt="Logo SGE" 
                   className="h-8 w-auto group-hover:scale-110 transition-transform object-contain" 
                   referrerPolicy="no-referrer"
+                  onError={() => setLogoError(true)}
                 />
+               ) : (
+                <GraduationCap className="h-8 w-8 text-orange-500 group-hover:scale-110 transition-transform" />
                )}
             </div>
             <p className="text-[9px] font-black text-pedagogic-blue uppercase tracking-[0.3em] mt-2 text-center">{appSettings.name}</p>
@@ -552,6 +565,7 @@ const Login = ({ onLogin }: any) => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [appSettings, setAppSettings] = useState({ name: "SGE AEE", logoUrl: "https://images.weserv.nl/?url=i.imgur.com/NR6kaz6.png" });
+  const [logoError, setLogoError] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -697,13 +711,16 @@ const Login = ({ onLogin }: any) => {
           
           <div className="text-center relative z-10">
             <div className="inline-flex p-5 rounded-[2rem] bg-slate-50 border border-slate-100 shadow-inner mb-8 group">
-               {appSettings.logoUrl && (
+               {appSettings.logoUrl && !logoError ? (
                  <img 
                    src={appSettings.logoUrl} 
                    alt="Logo" 
                    className="h-16 w-auto group-hover:scale-110 transition-transform object-contain" 
                    referrerPolicy="no-referrer" 
+                   onError={() => setLogoError(true)}
                  />
+               ) : (
+                 <GraduationCap className="h-16 w-16 text-orange-500 group-hover:scale-110 transition-transform" />
                )}
             </div>
             <h1 className="text-5xl font-black text-slate-800 tracking-tighter mb-2">
@@ -1561,14 +1578,16 @@ function AppContent() {
   };
 
   const handleLogout = async () => {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setUser(null);
     try {
       await signOut(auth);
     } catch (err) {
       console.warn("Erro ao fazer logout do Firebase:", err);
     }
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
+    // Hard refresh/redirect ensuring memory-heap wipe and securing against backward-cache bypasses
+    window.location.href = "/login";
   };
 
   if (loading || !authReady) {
@@ -1636,7 +1655,13 @@ function AppContent() {
               ) : user ? <Navigate to="/" /> : <Navigate to="/login" />
             } />
 
-            <Route path="/documentos" element={<Navigate to="/" />} />
+            <Route path="/documentos" element={
+              (user?.permissions?.includes('documents') || user?.role === 'aee' || isSuperUser(user)) ? (
+                <Layout user={user} onLogout={handleLogout}>
+                  <Documents user={user} />
+                </Layout>
+              ) : user ? <Navigate to="/" /> : <Navigate to="/login" />
+            } />
 
             <Route path="/relatorios" element={
               (user?.permissions?.includes('reports') || isSuperUser(user)) ? (
